@@ -1,11 +1,5 @@
 import { auth, type UserType } from '@/app/(auth)/auth';
-import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
-import {
-  getChatById,
-  saveChat,
-  saveMessages,
-  getMessageCountByUserId,
-} from '@/lib/db/queries';
+import { getChatById, saveChat, saveMessages, getMessageCountByUserId } from '@/lib/db/queries';
 import { generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -14,9 +8,7 @@ import { ChatSDKError } from '@/lib/errors';
 import type { ChatMessage } from '@/lib/types';
 import type { ChatModel } from '@/lib/ai/models';
 import type { VisibilityType } from '@/components/visibility-selector';
-import { generateResponse } from '@/lib/ai/models'; // ✅ Tu modelo Node.js
-
-export const maxDuration = 60;
+import { generateResponse } from '@/lib/ai/generator';
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -29,12 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const {
-      id,
-      message,
-      selectedChatModel,
-      selectedVisibilityType,
-    }: {
+    const { id, message, selectedChatModel, selectedVisibilityType }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel['id'];
@@ -45,72 +32,38 @@ export async function POST(request: Request) {
     if (!session?.user) return new ChatSDKError('unauthorized:chat').toResponse();
 
     const userType: UserType = session.user.type;
-
-    // Limite diario de mensajes
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 24,
-    });
-
+    const messageCount = await getMessageCountByUserId({ id: session.user.id, differenceInHours: 24 });
     if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
       return new ChatSDKError('rate_limit:chat').toResponse();
     }
 
     let chat = await getChatById({ id });
-
     if (!chat) {
       const title = await generateTitleFromUserMessage({ message });
-      await saveChat({
-        id,
-        userId: session.user.id,
-        title,
-        visibility: selectedVisibilityType,
-      });
+      await saveChat({ id, userId: session.user.id, title, visibility: selectedVisibilityType });
     } else if (chat.userId !== session.user.id) {
       return new ChatSDKError('forbidden:chat').toResponse();
     }
 
     // Guardar mensaje del usuario
     await saveMessages({
-      messages: [
-        {
-          chatId: id,
-          id: message.id,
-          role: 'user',
-          parts: message.parts,
-          attachments: [],
-          createdAt: new Date(),
-        },
-      ],
+      messages: [{ chatId: id, id: message.id, role: 'user', parts: message.parts, attachments: [], createdAt: new Date() }],
     });
 
-    // Generar respuesta de tu modelo Node.js
+    // Generar respuesta
     const userText = message.parts.join(' ');
     const aiReply = await generateResponse(userText, selectedChatModel);
 
-    // Guardar respuesta de IA
     const aiMessageId = generateUUID();
     await saveMessages({
-      messages: [
-        {
-          chatId: id,
-          id: aiMessageId,
-          role: 'ai',
-          parts: [aiReply],
-          attachments: [],
-          createdAt: new Date(),
-        },
-      ],
+      messages: [{ chatId: id, id: aiMessageId, role: 'ai', parts: [aiReply], attachments: [], createdAt: new Date() }],
     });
 
-    // Retornar respuesta al frontend
-    return new Response(
-      JSON.stringify({
-        reply: aiReply,
-        aiMessageId,
-      }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ reply: aiReply, aiMessageId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+
   } catch (error) {
     if (error instanceof ChatSDKError) return error.toResponse();
     console.error('Unhandled error in chat API:', error);
