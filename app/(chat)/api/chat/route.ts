@@ -45,12 +45,10 @@ export async function POST(request: Request) {
       return new ChatSDKError('forbidden:chat').toResponse();
     }
 
-    // Guardar mensaje del usuario
     await saveMessages({
       messages: [{ chatId: id, id: message.id, role: 'user', parts: message.parts, attachments: [], createdAt: new Date() }],
     });
 
-    // Generar respuesta
     const userText = message.parts.join(' ');
     const aiReply = await generateResponse(userText, selectedChatModel);
 
