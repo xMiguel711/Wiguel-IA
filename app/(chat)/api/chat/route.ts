@@ -1,33 +1,47 @@
 import type { ChatMessage } from '@/lib/types';
 
-// Este stub evita errores de compilación
-export function getStreamContext() {
+// Contexto de streaming interno (no exportado)
+function createStreamContext() {
   return {
-    // Contexto de streaming simulado
     streamId: 'stub-stream',
     messages: [] as ChatMessage[],
     addMessage: (msg: ChatMessage) => {
-      // Aquí podrías agregar lógica real
       console.log('Mensaje agregado al stream (stub):', msg);
     },
   };
 }
 
-// Opcional: si quieres exponer un endpoint GET para pruebas
+const streamContext = createStreamContext();
+
+// Endpoint GET para pruebas
 export async function GET(request: Request) {
-  return new Response(JSON.stringify({ status: 'ok', context: getStreamContext() }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return new Response(
+    JSON.stringify({ status: 'ok', context: { streamId: streamContext.streamId } }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 }
 
-// Opcional: si quieres exponer un endpoint POST para pruebas
+// Endpoint POST para enviar mensajes
 export async function POST(request: Request) {
   const body = await request.json();
-  const stream = getStreamContext();
-  stream.addMessage(body.message as ChatMessage);
-  return new Response(JSON.stringify({ status: 'ok', streamId: stream.streamId }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  if (!body.message) {
+    return new Response(
+      JSON.stringify({ status: 'error', message: 'Falta campo message' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const msg: ChatMessage = body.message;
+  streamContext.addMessage(msg);
+
+  return new Response(
+    JSON.stringify({ status: 'ok', streamId: streamContext.streamId }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
 }
