@@ -1,3 +1,5 @@
+"use client"; // <--- Esto indica que es un componente cliente
+
 import { useState } from "react";
 import type { ChatMessage, UIMessagePart } from "@/lib/types";
 
