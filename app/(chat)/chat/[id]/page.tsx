@@ -1,27 +1,23 @@
+// app/(chat)/chat/[id]/page.tsx
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
-import Chat from '@/components/chat'; // Componente de cliente
+import Chat from '@/components/chat'; // ✅ Import default
+import { DataStreamHandler } from '@/components/data-stream-handler';
 import { auth } from '@/app/(auth)/auth';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
-import { DataStreamHandler } from '@/components/data-stream-handler';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import { convertToUIMessages } from '@/lib/utils';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const { id } = params;
-  const chat = await getChatById({ id });
 
-  if (!chat) {
-    notFound();
-  }
+  const chat = await getChatById({ id });
+  if (!chat) return notFound();
 
   const session = await auth();
-
-  if (!session) {
-    redirect('/api/auth/guest');
-  }
+  if (!session) redirect('/api/auth/guest');
 
   if (chat.visibility === 'private') {
     if (!session.user) return notFound();
@@ -31,10 +27,11 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const messagesFromDb = await getMessagesByChatId({ id });
   const uiMessages = convertToUIMessages(messagesFromDb);
 
-  // 👈 await necesario aquí
+  // Manejo correcto de cookies
   const cookieStore = await cookies();
-  const chatModelFromCookie = cookieStore.get('chat-model');
-  const chatModel = chatModelFromCookie ? chatModelFromCookie.value : DEFAULT_CHAT_MODEL;
+  const allCookies = cookieStore.getAll();
+  const chatModelFromCookie = allCookies.find(c => c.name === 'chat-model');
+  const chatModel = chatModelFromCookie?.value || DEFAULT_CHAT_MODEL;
 
   return (
     <>
