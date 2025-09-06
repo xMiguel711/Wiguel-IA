@@ -1,4 +1,3 @@
-// NO "use client" aquí, es un Server Component
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
@@ -32,7 +31,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const messagesFromDb = await getMessagesByChatId({ id });
   const uiMessages = convertToUIMessages(messagesFromDb);
 
-  const cookieStore = cookies();
+  // 👈 await necesario aquí
+  const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get('chat-model');
   const chatModel = chatModelFromCookie ? chatModelFromCookie.value : DEFAULT_CHAT_MODEL;
 
