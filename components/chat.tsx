@@ -1,4 +1,4 @@
-"use client"; // <--- Esto indica que es un componente cliente
+"use client"; // 🔑 Esto indica que es un Client Component
 
 import { useState } from "react";
 import type { ChatMessage, UIMessagePart } from "@/lib/types";
@@ -14,20 +14,20 @@ export default function Chat() {
     const newMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      parts: [{ type: "text", content: msg }], // <- estructura correcta
+      parts: [{ type: "text", content: msg }], // ✅ estructura correcta
     };
 
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
 
-    // Aquí podrías enviar el mensaje al backend o stream
+    // Aquí puedes enviar el mensaje al backend o al stream
   };
 
   return (
-    <div>
-      <div>
+    <div className="chat-container">
+      <div className="messages">
         {messages.map((m) => (
-          <div key={m.id}>
+          <div key={m.id} className={`message ${m.role}`}>
             {m.parts.map((p, i) => (
               <span key={i}>{p.content}</span>
             ))}
@@ -35,12 +35,15 @@ export default function Chat() {
         ))}
       </div>
 
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Escribe un mensaje..."
-      />
-      <button onClick={() => handleSend(input)}>Enviar</button>
+      <div className="input-area">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Escribe un mensaje..."
+        />
+        <button onClick={() => handleSend(input)}>Enviar</button>
+      </div>
     </div>
   );
 }
