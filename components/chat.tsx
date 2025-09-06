@@ -32,8 +32,13 @@ export default function Chat() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let aiMessage = "";
-      setMessages((prev) => [...prev, { from: "ai", text: "" }]); // mensaje inicial vacío
-      let index = messages.length; // índice del mensaje AI que estamos llenando
+
+      // Añadir mensaje AI vacío y obtener su índice
+      setMessages((prev) => {
+        prev.push({ from: "ai", text: "" });
+        return [...prev];
+      });
+      const index = messages.length; // índice del mensaje AI que vamos a llenar
 
       while (true) {
         const { value, done } = await reader.read();
