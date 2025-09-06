@@ -1,5 +1,5 @@
 "use client";
-import { useState, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 
 type Message = { from: "ai" | "user"; text: string };
 const suggestions = ["Next.js", "Dijkstra", "Ensayo sobre Silicon Valley", "Clima"];
@@ -9,23 +9,46 @@ export default function Chat() {
     { from: "ai", text: "Hello there! How can I help you today?" },
   ]);
   const [input, setInput] = useState<string>("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Scroll al final automáticamente
+  const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  useEffect(scrollToBottom, [messages]);
 
   const sendMessage = async (msg: string) => {
     if (!msg.trim()) return;
-    setMessages([...messages, { from: "user", text: msg }]);
+    setMessages((prev) => [...prev, { from: "user", text: msg }]);
     setInput("");
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch("/api/chat/stream", { // tu endpoint de streaming
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msg }),
       });
 
-      const data = await res.json();
-      setMessages((prev) => [...prev, { from: "ai", text: data.reply }]);
-    } catch {
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let aiMessage = "";
+      setMessages((prev) => [...prev, { from: "ai", text: "" }]); // mensaje inicial vacío
+      let index = messages.length; // índice del mensaje AI que estamos llenando
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        aiMessage += decoder.decode(value, { stream: true });
+
+        setMessages((prev) => {
+          const copy = [...prev];
+          copy[index] = { from: "ai", text: aiMessage };
+          return copy;
+        });
+      }
+    } catch (e) {
       setMessages((prev) => [...prev, { from: "ai", text: "Error al conectar con tu modelo." }]);
+      console.error(e);
     }
   };
 
@@ -46,6 +69,7 @@ export default function Chat() {
             {m.text}
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
 
       <div className="flex space-x-2 mb-2">
