@@ -1,8 +1,10 @@
+"use client"; // Necesario si este archivo usa hooks o componentes que usan hooks
+
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
+import Chat from '@/components/chat'; // <-- import default
 import { auth } from '@/app/(auth)/auth';
-import { Chat } from '@/components/chat';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { DataStreamHandler } from '@/components/data-stream-handler';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
@@ -33,38 +35,20 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     }
   }
 
-  const messagesFromDb = await getMessagesByChatId({
-    id,
-  });
-
+  const messagesFromDb = await getMessagesByChatId({ id });
   const uiMessages = convertToUIMessages(messagesFromDb);
 
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get('chat-model');
 
-  if (!chatModelFromCookie) {
-    return (
-      <>
-        <Chat
-          id={chat.id}
-          initialMessages={uiMessages}
-          initialChatModel={DEFAULT_CHAT_MODEL}
-          initialVisibilityType={chat.visibility}
-          isReadonly={session?.user?.id !== chat.userId}
-          session={session}
-          autoResume={true}
-        />
-        <DataStreamHandler />
-      </>
-    );
-  }
+  const chatModel = chatModelFromCookie ? chatModelFromCookie.value : DEFAULT_CHAT_MODEL;
 
   return (
     <>
       <Chat
         id={chat.id}
         initialMessages={uiMessages}
-        initialChatModel={chatModelFromCookie.value}
+        initialChatModel={chatModel}
         initialVisibilityType={chat.visibility}
         isReadonly={session?.user?.id !== chat.userId}
         session={session}
