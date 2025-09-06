@@ -1,9 +1,8 @@
-"use client"; // Necesario si este archivo usa hooks o componentes que usan hooks
-
+// NO "use client" aquí, es un Server Component
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
-import Chat from '@/components/chat'; // <-- import default
+import Chat from '@/components/chat'; // Componente de cliente
 import { auth } from '@/app/(auth)/auth';
 import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { DataStreamHandler } from '@/components/data-stream-handler';
@@ -26,21 +25,15 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   }
 
   if (chat.visibility === 'private') {
-    if (!session.user) {
-      return notFound();
-    }
-
-    if (session.user.id !== chat.userId) {
-      return notFound();
-    }
+    if (!session.user) return notFound();
+    if (session.user.id !== chat.userId) return notFound();
   }
 
   const messagesFromDb = await getMessagesByChatId({ id });
   const uiMessages = convertToUIMessages(messagesFromDb);
 
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const chatModelFromCookie = cookieStore.get('chat-model');
-
   const chatModel = chatModelFromCookie ? chatModelFromCookie.value : DEFAULT_CHAT_MODEL;
 
   return (
