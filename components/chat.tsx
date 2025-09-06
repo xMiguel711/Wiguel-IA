@@ -1,26 +1,43 @@
-"use client"; // 🔑 Esto indica que es un Client Component
+"use client"; // Muy importante para que funcione con hooks y sea un Client Component
 
 import { useState } from "react";
 import type { ChatMessage, UIMessagePart } from "@/lib/types";
 
-export default function Chat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+interface ChatProps {
+  id: string;
+  initialMessages?: ChatMessage[];
+  initialChatModel?: string;
+  initialVisibilityType?: string;
+  isReadonly?: boolean;
+  session?: any;
+  autoResume?: boolean;
+}
+
+export default function Chat({
+  id,
+  initialMessages = [],
+  initialChatModel,
+  initialVisibilityType,
+  isReadonly = false,
+  session,
+  autoResume = false,
+}: ChatProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState("");
 
   const handleSend = (msg: string) => {
     if (!msg.trim()) return;
 
-    // Convertimos el string en un UIMessagePart válido
     const newMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
-      parts: [{ type: "text", content: msg }], // ✅ estructura correcta
+      parts: [{ type: "text", content: msg } as UIMessagePart],
     };
 
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
 
-    // Aquí puedes enviar el mensaje al backend o al stream
+    // Aquí podrías enviar el mensaje al backend o stream
   };
 
   return (
@@ -35,15 +52,16 @@ export default function Chat() {
         ))}
       </div>
 
-      <div className="input-area">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Escribe un mensaje..."
-        />
-        <button onClick={() => handleSend(input)}>Enviar</button>
-      </div>
+      {!isReadonly && (
+        <div className="input-area">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Escribe un mensaje..."
+          />
+          <button onClick={() => handleSend(input)}>Enviar</button>
+        </div>
+      )}
     </div>
   );
 }
